@@ -22,21 +22,29 @@ const { loadConfig, sleep, ts, truncate, estTokens, ensureDir, uid } = require('
 const { connect } = require('./ws');
 
 function parseArgs(argv) {
+  // 兼容两种形态：① "--mode demo"（空格分隔）② "--mode=demo"（等号）——Start-Process/cmd/单串 argv 全覆盖
+  const flat = [];
+  for (const part of argv) {
+    for (const tok of String(part).trim().split(/\s+/).filter(Boolean)) {
+      const m = tok.match(/^--([\w-]+)=(.*)$/);
+      if (m) { flat.push('--' + m[1], m[2]); } else flat.push(tok);
+    }
+  }
   const a = { slots: 2, mode: 'api', caps: '*', fleet: null, allowShell: false };
-  for (let i = 0; i < argv.length; i++) {
-    const k = argv[i];
-    if (k === '--mode') a.mode = argv[++i];
-    else if (k === '--provider') a.provider = argv[++i];
-    else if (k === '--model') a.model = argv[++i];
-    else if (k === '--persona') a.persona = argv[++i];
-    else if (k === '--slots') a.slots = +argv[++i];
-    else if (k === '--caps') a.caps = argv[++i];
-    else if (k === '--tiers') a.tiers = argv[++i];
-    else if (k === '--name') a.name = argv[++i];
-    else if (k === '--fleet') a.fleet = argv[++i];
-    else if (k === '--url') a.url = argv[++i];
+  for (let i = 0; i < flat.length; i++) {
+    const k = flat[i];
+    if (k === '--mode') a.mode = flat[++i];
+    else if (k === '--provider') a.provider = flat[++i];
+    else if (k === '--model') a.model = flat[++i];
+    else if (k === '--persona') a.persona = flat[++i];
+    else if (k === '--slots') a.slots = +flat[++i];
+    else if (k === '--caps') a.caps = flat[++i];
+    else if (k === '--tiers') a.tiers = flat[++i];
+    else if (k === '--name') a.name = flat[++i];
+    else if (k === '--fleet') a.fleet = flat[++i];
+    else if (k === '--url') a.url = flat[++i];
     else if (k === '--allow-shell') a.allowShell = true;
-    else if (k === '--config') a.config = argv[++i];
+    else if (k === '--config') a.config = flat[++i];
   }
   return a;
 }
