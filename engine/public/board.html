@@ -1,86 +1,259 @@
 <!doctype html><meta charset="utf-8" />
-<title>舰队 · 看板</title>
+<title>Fleet Deck · 舰队旗舰看板</title>
 <style>
-  body { font-family: ui-monospace, Consolas, "PingFang SC", monospace; background: #0c0d10; color: #e5e7eb; margin: 0; padding: 0; }
-  header { padding: 12px 18px; border-bottom: 1px solid #1f2937; display: flex; gap: 14px; align-items: center; }
-  header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; color: #fde68a; }
-  header .pill { font-size: 11px; padding: 2px 8px; border: 1px solid #374; border-radius: 999px; color: #93c5fd; }
-  main { padding: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .card { background: #111317; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; }
-  .card h2 { margin: 0 0 8px; font-size: 12px; color: #fbbf24; letter-spacing: .8px; text-transform: uppercase; }
-  .row { font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #1f2937; display: flex; gap: 8px; }
-  .row:last-child { border-bottom: 0; }
-  .badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #1f2937; color: #93c5fd; }
-  .s-active { background: #052e1a; color: #34d399; }
-  .s-pending { background: #2b1a05; color: #fbbf24; }
-  .s-ready { background: #04263a; color: #38bdf8; }
-  .s-leased, .s-running { background: #2a0e3f; color: #c084fc; }
-  .s-done { background: #053024; color: #10b981; }
-  .s-failed { background: #3a0d11; color: #f87171; }
-  .bar { height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; }
-  .bar > div { height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); }
-  .record { font-size: 12px; padding: 6px 0; border-bottom: 1px dashed #1f2937; }
-  .record .type { color: #a78bfa; }
-  pre { white-space: pre-wrap; word-break: break-word; margin: 4px 0 0; color: #d1d5db; }
+  :root { --bg:#0a0b0e; --card:#111318; --line:#1e2430; --txt:#e5e7eb; --dim:#8b93a3; --gold:#fbbf24; --grn:#10b981; --blu:#38bdf8; --pur:#c084fc; --red:#f87171; --yel:#fde047; }
+  * { box-sizing: border-box; }
+  body { font-family: "Cascadia Code", ui-monospace, Consolas, "PingFang SC", monospace; background: var(--bg); color: var(--txt); margin: 0; }
+  header { display:flex; gap:10px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:linear-gradient(180deg,#0d0f13,#0a0b0eE6); backdrop-filter:blur(6px); z-index:9; }
+  h1 { font-size:13px; margin:0; letter-spacing:2px; color:var(--gold); }
+  .pill { font-size:11px; padding:2px 9px; border:1px solid var(--line); border-radius:999px; color:var(--dim); }
+  .pill b { color:var(--txt); }
+  .pill.alert { border-color:#7c2d12; color:var(--yel); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
+  .ws { width:8px; height:8px; border-radius:50%; background:var(--red); }
+  .ws.on { background:var(--grn); box-shadow:0 0 6px var(--grn); }
+  main { padding:14px; display:grid; grid-template-columns:repeat(12,1fr); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:11px; min-width:0; }
+  .card h2 { margin:0 0 7px; font-size:11px; color:var(--gold); letter-spacing:1.2px; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center; }
+  .c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+  .row { font-size:12px; padding:3px 0; display:flex; gap:7px; align-items:baseline; border-bottom:1px dashed #171c26; flex-wrap:wrap; }
+  .row:last-child { border-bottom:0; }
+  .badge { font-size:10px; padding:1px 6px; border-radius:4px; background:#1a2030; color:var(--blu); flex:none; }
+  .s-pending{background:#1a2030;color:#94a3b8}.s-ready{background:#04263a;color:var(--blu)}
+  .s-leased,.s-running{background:#2a0e3f;color:var(--pur)}
+  .s-done{background:#053024;color:var(--grn)}.s-failed{background:#3a0d11;color:var(--red)}
+  .s-awaiting_approval{background:#332107;color:var(--yel);animation:pulse 1.2s infinite}
+  .s-void{background:#141821;color:#6b7280}
+  .bar { height:5px; background:#1a2030; border-radius:3px; overflow:hidden; flex:1; }
+  .bar > div { height:100%; background:linear-gradient(90deg,var(--blu),var(--grn)); transition:width .5s; }
+  .record { font-size:11px; padding:3px 0; border-bottom:1px dashed #171c26; line-height:1.5; }
+  .record .t { color:var(--pur); }
+  .record .seq { color:#4b5563; }
+  button { font:inherit; font-size:11px; padding:2px 10px; border-radius:5px; border:1px solid var(--line); background:#161b26; color:var(--txt); cursor:pointer; }
+  button.ok:hover { border-color:var(--grn); color:var(--grn); }
+  button.no:hover { border-color:var(--red); color:var(--red); }
+  #dag { width:100%; cursor:crosshair; }
+  .tip { position:fixed; pointer-events:none; background:#0d1017; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:11px; max-width:380px; z-index:99; display:none; line-height:1.55; }
+  .tip b { color:var(--gold); }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+  .kpi { background:#0d1017; border:1px solid var(--line); border-radius:8px; padding:7px 10px; }
+  .kpi .v { font-size:19px; font-weight:700; color:var(--txt); }
+  .kpi .k { font-size:10px; color:var(--dim); letter-spacing:1px; }
+  .kpi.g .v { color:var(--grn); } .kpi.b .v { color:var(--blu); } .kpi.y .v { color:var(--yel); } .kpi.p .v { color:var(--pur); }
+  #spark { width:100%; height:56px; }
+  .flash { animation: in .35s ease-out; } @keyframes in { from { background:#2a0e3f; } }
 </style>
 <header>
-  <h1>FLEET · 看板 v3</h1>
-  <span class="pill" id="uptime">--</span>
-  <span class="pill" id="fleets">--</span>
-  <span class="pill" id="workers">--</span>
-  <span class="pill" id="leases">--</span>
-  <span class="pill" id="threads">--</span>
-  <span class="pill" id="pending">--</span>
+  <h1>⚓ FLEET DECK</h1>
+  <span class="ws" id="wsdot"></span>
+  <span class="pill" id="p-uptime">--</span>
+  <span class="pill" id="p-workers">--</span>
+  <span class="pill" id="p-threads">--</span>
+  <span class="pill" id="p-tokens">--</span>
+  <span class="pill" id="p-elapsed">--</span>
+  <span class="pill" id="p-pending">--</span>
+  <span class="pill" id="p-bus" style="margin-left:auto"></span>
 </header>
 <main>
-  <section class="card"><h2>Fleets</h2><div id="fleets"></div></section>
-  <section class="card"><h2>Workers</h2><div id="workers-list"></div></section>
-  <section class="card"><h2>Runtime & Gas Town</h2><div id="runtime"></div></section>
-  <section class="card"><h2>Balancer & FleetBus</h2><div id="balancer"></div></section>
-  <section class="card"><h2>Evolve 产物</h2><div id="evolve"></div></section>
-  <section class="card"><h2>Hooks 统计</h2><div id="hooks"></div></section>
-  <section class="card" style="grid-column: span 2"><h2>Nodes</h2><div id="nodes"></div></section>
-  <section class="card" style="grid-column: span 2"><h2>Board (live)</h2><div id="board"></div></section>
+  <section class="card c12"><div class="kpis" id="kpis"></div></section>
+  <section class="card c12"><h2>作战拓扑 DAG <span id="dag-meta" style="color:var(--dim);text-transform:none"></span></h2><canvas id="dag" height="0"></canvas></section>
+  <section class="card c8"><h2>实时事件流 <span style="color:var(--dim);text-transform:none" id="ws-state">连接中…</span></h2><div id="events" style="max-height:300px;overflow:auto"></div></section>
+  <section class="card c4"><h2>Token 曲线</h2><canvas id="spark" height="56"></canvas>
+    <h2 style="margin-top:9px">待人工审批</h2><div id="approvals">（无）</div></section>
+  <section class="card c4"><h2>Workers</h2><div id="workers-list"></div></section>
+  <section class="card c4"><h2>Balancer 多厂商</h2><div id="balancer"></div></section>
+  <section class="card c4"><h2>FleetBus / Evolve</h2><div id="bus"></div><div id="evolve" style="margin-top:6px"></div></section>
+  <section class="card c6"><h2>黑板 (live)</h2><div id="board" style="max-height:220px;overflow:auto"></div></section>
+  <section class="card c6"><h2>Runtime / Hooks / Beads</h2><div id="runtime"></div><div id="hooks" style="margin-top:6px"></div></section>
 </main>
+<div class="tip" id="tip"></div>
 <script>
-const fmt = (s) => s < 60 ? s.toFixed(0) + 's' : (s/60).toFixed(1) + 'm';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDur = (ms) => { const s = ms/1000; return s < 60 ? s.toFixed(0)+'s' : s < 3600 ? (s/60).toFixed(1)+'m' : (s/3600).toFixed(1)+'h'; };
+let lastState = null; const tokenSamples = [];
+
+/* ── WS 实时事件流（断线自动重连，事件直插流顶） ── */
+let wsBackoff = 1000;
+function wsConnect() {
+  const dot = $('wsdot'), st = $('ws-state');
+  try {
+    const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+    ws.onopen = () => { dot.classList.add('on'); st.textContent = 'WS 已连接（实时）'; wsBackoff = 1000; };
+    ws.onmessage = (m) => { try { const p = JSON.parse(m.data); if (p.t === 'event' && p.env) pushEvent(p.env, true); } catch (_) {} };
+    ws.onclose = () => { dot.classList.remove('on'); st.textContent = 'WS 断开 · 降级轮询 ' + fmtDur(wsBackoff); setTimeout(wsConnect, wsBackoff); wsBackoff = Math.min(wsBackoff * 2, 15000); };
+  } catch (_) { st.textContent = 'WS 不可用 · 轮询模式'; }
+}
+function pushEvent(env, live) {
+  const box = $('events');
+  const div = document.createElement('div');
+  div.className = 'record' + (live ? ' flash' : '');
+  div.innerHTML = `<span class="t">${esc(env.type)}</span> <span class="seq">seq${env.seq || '·'}</span> ${env.fleet || ''} <pre style="display:inline;color:#9ca3af">${esc(JSON.stringify(env.data || {})).slice(0, 220)}</pre>`;
+  box.prepend(div);
+  while (box.children.length > 160) box.lastChild.remove();
+}
+
+/* ── DAG 拓扑图（canvas，按 deps 分层，点击看详情，状态着色） ── */
+const COLORS = { pending:'#94a3b8', ready:'#38bdf8', leased:'#c084fc', running:'#a855f7', done:'#10b981', failed:'#f87171', awaiting_approval:'#fde047', void:'#4b5563' };
+let dagNodes = [], dagHit = [];
+function drawDAG(state) {
+  const nodes = (state.nodeDetail || []).filter((n) => n.status !== 'void');
+  const cv = $('dag'), ctx = cv.getContext('2d');
+  const W = cv.clientWidth || 1000;
+  // 分层：depth = deps 最大 depth + 1
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+  const depth = {}; const depthOf = (id, seen) => {
+    if (depth[id] != null) return depth[id];
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    const n = byId[id];
+    const d = (!n || !n.deps || !n.deps.length) ? 0 : 1 + Math.max(...n.deps.filter((d) => byId[d]).map((d) => depthOf(d, seen)));
+    depth[id] = d; return d;
+  };
+  nodes.forEach((n) => depthOf(n.id, new Set()));
+  const layers = {};
+  nodes.forEach((n) => { const d = depth[n.id]; (layers[d] = layers[d] || []).push(n); });
+  const maxD = Math.max(0, ...Object.keys(layers).map(Number));
+  const rowH = 64, padT = 18, H = padT * 2 + (maxD + 1) * rowH;
+  cv.width = W * devicePixelRatio; cv.height = H * devicePixelRatio; cv.style.height = H + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  // 边
+  ctx.strokeStyle = '#232b3b'; ctx.lineWidth = 1.2;
+  nodes.forEach((n) => (n.deps || []).forEach((d) => {
+    const a = dagPos[byId[d] && byId[d].id], b = dagPos[n.id];
+    if (a && b) { ctx.beginPath(); ctx.moveTo(a.x + a.w, a.y + 16); ctx.bezierCurveTo((a.x+a.w+b.x)/2, a.y+16, (a.x+a.w+b.x)/2, b.y+16, b.x, b.y+16); ctx.stroke(); }
+  }));
+  // 节点
+  dagPos = {}; dagHit = [];
+  Object.keys(layers).sort((a, b) => a - b).forEach((d) => {
+    const arr = layers[d]; const bw = Math.min(150, (W - 40) / arr.length - 14);
+    arr.forEach((n, i) => {
+      const x = 20 + i * ((W - 40) / arr.length), y = padT + d * rowH;
+      const c = COLORS[n.status] || '#94a3b8';
+      dagPos[n.id] = { x, y, w: bw };
+      ctx.beginPath(); ctx.roundRect(x, y, bw, 34, 7);
+      ctx.fillStyle = '#0d1017'; ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = n.status === 'running' ? 2 : 1.1; ctx.stroke();
+      if (n.status === 'awaiting_approval') { ctx.save(); ctx.shadowColor = c; ctx.shadowBlur = 9; ctx.stroke(); ctx.restore(); }
+      ctx.fillStyle = c; ctx.font = '10px monospace';
+      const short = n.id.replace(/^n\d+_/, '');
+      ctx.fillText(truncate(short, 20), x + 7, y + 14);
+      ctx.fillStyle = '#8b93a3';
+      ctx.fillText(`${n.persona}·${n.tier}${n.attempt ? '·r' + n.attempt : ''}`, x + 7, y + 27);
+      dagHit.push({ x, y, w: bw, h: 34, n });
+    });
+  });
+  $('dag-meta').textContent = `${nodes.length} 节点 · ${maxD + 1} 层`;
+}
+let dagPos = {};
+function truncate(s, n) { return String(s).length > n ? String(s).slice(0, n - 1) + '…' : s; }
+const dagTip = $('tip');
+$('dag').addEventListener('mousemove', (e) => {
+  const r = $('dag').getBoundingClientRect();
+  const hit = dagHit.find((h) => e.offsetX >= h.x && e.offsetX <= h.x + h.w && e.offsetY >= h.y && e.offsetY <= h.y + h.h);
+  if (hit) {
+    const n = hit.n;
+    dagTip.style.display = 'block';
+    dagTip.style.left = (e.clientX + 14) + 'px'; dagTip.style.top = (e.clientY + 14) + 'px';
+    dagTip.innerHTML = `<b>${esc(n.id)}</b> <span class="badge s-${n.status}">${n.status}</span><br>${esc(n.mission || '')}<br><span style="color:var(--dim)">persona=${esc(n.persona)} · tier=${esc(n.tier)} · 尝试×${n.attempt} · tok=${n.tokens || 0}${n.verdict ? ' · verdict=' + esc(n.verdict) : ''}<br>deps: ${esc((n.deps || []).join(', ') || '无')}</span>`;
+  } else dagTip.style.display = 'none';
+});
+$('dag').addEventListener('mouseleave', () => dagTip.style.display = 'none');
+
+/* ── 审批：看板上直接批 ── */
+async function decide(fleet, node, op) {
+  await fetch('/v1/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op, fleet, node, by: 'deck' }) });
+  tick();
+}
+function renderApprovals(state) {
+  const pend = (state.nodeDetail || []).filter((n) => n.status === 'awaiting_approval');
+  $('approvals').innerHTML = pend.length ? pend.map((n) =>
+    `<div class="row"><b style="color:var(--yel)">${esc(n.id)}</b><span style="color:var(--dim)">${esc(n.persona)}</span>
+     <button class="ok" onclick="decide('${n.fleet}','${n.id}','approve')">批准</button>
+     <button class="no" onclick="decide('${n.fleet}','${n.id}','reject')">驳回</button></div>`).join('')
+    : '<div class="row" style="color:var(--dim)">（无待审批）</div>';
+  const p = $('p-pending');
+  p.textContent = pend.length ? '⚠ 待审批 ' + pend.length : '审批畅通';
+  p.className = 'pill' + (pend.length ? ' alert' : '');
+}
+
+/* ── 主循环 ── */
 async function tick() {
-  const r = await fetch('/v1/state').then(r => r.json());
-  document.getElementById('uptime').textContent = 'uptime ' + fmt(r.uptimeMs/1000);
-  document.getElementById('fleets').textContent = r.fleets.length + ' fleets';
-  document.getElementById('workers').textContent = r.workers.filter(w => w.online).length + '/' + r.workers.length + ' online';
-  document.getElementById('leases').textContent = r.activeLeases + ' leases';
-  const rt = r.runtime || {};
-  document.getElementById('threads').textContent = 'threads ' + (rt.activeThreads||0) + '/' + (rt.maxThreads||'-') + ' · depth≤' + (rt.maxDepth||'-');
-  const pend = (r.nodeDetail||[]).filter(n => n.status === 'awaiting_approval');
-  document.getElementById('pending').textContent = pend.length ? ('⚠ 待审批 ' + pend.length) : '无审批积压';
-  document.getElementById('pending').style.color = pend.length ? '#fbbf24' : '#34d399';
-  document.getElementById('fleets').innerHTML = r.fleets.map(f => `<div class="row"><span class="badge s-${f.status||'pending'}">${f.status}</span><b>${f.id}</b><span style="color:#9ca3af">${f.topology} · ${f.nodes} · ${(f.board && f.board.total)||0} records</span></div>`).join('');
-  document.getElementById('workers-list').innerHTML = r.workers.map(w => `<div class="row"><span class="badge">${w.kind}</span><b>${w.name}</b><span style="color:#9ca3af">${w.model||''} busy=${w.busy.length} done=${w.done} tokens=${w.tokens}</span></div>`).join('');
-  const beads = r.beads || []; const convoys = r.convoys || [];
-  document.getElementById('runtime').innerHTML =
-    `<div class="row"><b>max_threads</b> ${rt.maxThreads||'-'} · <b>job 超时</b> ${((rt.jobMaxRuntimeMs||0)/60000)|0}min · <b>activeJobs</b> ${rt.activeJobs||0}</div>` +
-    (r.refineryPending ? `<div class="row"><span class="badge s-pending">refinery</span> 合并队列 ${r.refineryPending}</div>` : '') +
-    convoys.slice(-8).map(c => `<div class="row"><span class="badge">${c.status}</span><b>convoy</b> ${c.name ? c.name.slice(0,40) : c.id} · ${(c.beads||[]).length} beads · ${c.progress!=null?(c.progress*100)+'%':''}</div>`).join('');
-  document.getElementById('hooks').innerHTML = Object.entries(r.hookStats||{}).map(([k,v]) => `<div class="row"><b>${k}</b><span style="color:#9ca3af">×${v.count} · ${v.totalMs}ms · 失败 ${v.failed}</span></div>`).join('') || '<div class="row">（尚无 hook 事件）</div>';
-  // v5: Balancer / FleetBus / Evolve
-  const bal = r.balancerSnap || {};
-  const bprov = bal.providers || {};
-  document.getElementById('balancer').innerHTML =
-    `<div class="row"><b>模式</b> ${bal.mode||'-'} · <b>rr</b> ${bal.rr||0}</div>` +
-    Object.entries(bprov).map(([k,v]) => `<div class="row"><span class="badge ${v.ok?'':'s-failed'}">${v.ok?'健康':'降级'}</span><b>${k}</b> · 错误×${v.errs}${v.lastErr?' · '+v.lastErr.slice(0,30):''}</div>`).join('') +
-    `<div class="row"><span class="badge">fleetbus</span> orders=${(r.busSnap&&r.busSnap.orders||[]).length} · deps=${(r.busSnap&&r.busSnap.deps||[]).length} · peers=${(r.busSnap&&r.busSnap.peers)||0}</div>`;
-  const ev = r.evolveArtifacts || {};
-  document.getElementById('evolve').innerHTML =
-    `<div class="row"><b>policies</b> ${(ev.policies||[]).length} · <b>genome</b> ${(ev.genome||[]).length} · <b>boost</b> ${(ev.boost||[]).length}</div>` +
-    (ev.boost||[]).slice(-6).map((f) => `<div class="row">${f}</div>`).join('');
-  const pend2 = (r.nodeDetail||[]).filter(n => n.status === 'awaiting_approval');
-  if (pend2.length) document.getElementById('pending').textContent = '⚠ 待审批 ' + pend2.length;
-  document.getElementById('nodes').innerHTML = r.nodeDetail.map(n => `<div class="row"><span class="badge s-${n.status||'pending'}">${n.status}</span><b>${n.id}</b><span style="color:#9ca3af">${n.kind}/${n.persona}/${n.tier}</span>${n.verdict ? `<span class="badge">verdict=${n.verdict}</span>`:''}</div>`).join('');
-  if (r.fleets[0]) {
-    const r2 = await fetch(`/v1/events?fleet=${r.fleets[0].id}&limit=80`).then(x=>x.json());
-    document.getElementById('board').innerHTML = r2.slice().reverse().map(e => `<div class="record"><span class="type">${e.type}</span> · ${e.actor || ''} · seq ${e.seq} <pre>${JSON.stringify(e.data||{}, null, 0).slice(0,400)}</pre></div>`).join('');
+  let state;
+  try { state = await fetch('/v1/state').then((r) => r.json()); } catch (_) { return; }
+  lastState = state;
+  const rt = state.runtime || {};
+  const nd = state.nodeDetail || [];
+  const by = {}; nd.forEach((n) => by[n.status] = (by[n.status] || 0) + 1);
+  const done = by.done || 0, total = nd.length;
+  const totalTok = (state.workers || []).reduce((s, w) => s + (w.tokens || 0), 0);
+  $('p-uptime').innerHTML = 'uptime <b>' + fmtDur(state.uptimeMs) + '</b>';
+  $('p-workers').innerHTML = (state.workers || []).filter((w) => w.online).length + '/<b>' + state.workers.length + '</b> 舰员在线';
+  $('p-threads').innerHTML = 'threads <b>' + (rt.activeThreads || 0) + '/' + (rt.maxThreads || '-') + '</b> · depth≤' + (rt.maxDepth || '-');
+  $('p-tokens').innerHTML = 'tokens <b>' + totalTok.toLocaleString() + '</b>';
+  $('p-elapsed').innerHTML = 'leases <b>' + state.activeLeases + '</b>';
+  const bs = state.busSnap || {};
+  $('p-bus').innerHTML = `bus orders=${(bs.orders || []).length} deps=${(bs.deps || []).length} peers=${bs.peers || 0}`;
+
+  $('kpis').innerHTML = `
+    <div class="kpi g"><div class="v">${done}/${total}</div><div class="k">节点完成</div><div class="bar" style="margin-top:4px"><div style="width:${total ? (done / total * 100) : 0}%"></div></div></div>
+    <div class="kpi p"><div class="v">${by.running || 0}</div><div class="k">执行中</div></div>
+    <div class="kpi b"><div class="v">${by.ready || 0}</div><div class="k">就绪待派</div></div>
+    <div class="kpi y"><div class="v">${by.awaiting_approval || 0}</div><div class="k">待审批</div></div>
+    <div class="kpi" style="--c:var(--red)"><div class="v" style="color:var(--red)">${by.failed || 0}</div><div class="k">失败</div></div>
+    <div class="kpi g"><div class="v">${(state.fleets || []).filter((f) => f.status === 'complete').length}/${state.fleets.length}</div><div class="k">舰队收口</div></div>`;
+
+  $('workers-list').innerHTML = (state.workers || []).map((w) =>
+    `<div class="row"><span class="badge">${esc(w.kind)}</span><b>${esc(w.name)}</b><span style="color:var(--dim)">${esc(w.model || w.persona || '')} · busy=${w.busy.length} · done=${w.done} · tok=${(w.tokens || 0).toLocaleString()}</span></div>`).join('') || '<div class="row" style="color:var(--dim)">（无舰员连接）</div>';
+
+  const bal = state.balancerSnap || {};
+  $('balancer').innerHTML = `<div class="row"><b>${esc(bal.mode || '-')}</b> · rr=${bal.rr || 0}</div>` +
+    Object.entries(bal.providers || {}).map(([k, v]) =>
+      `<div class="row"><span class="badge ${v.ok ? 's-done' : 's-failed'}">${v.ok ? '健康' : '降级'}</span><b>${esc(k)}</b><span style="color:var(--dim)">err×${v.errs}${v.lastErr ? ' · ' + esc(v.lastErr.slice(0, 34)) : ''}</span></div>`).join('');
+  const ev = state.evolveArtifacts || {};
+  $('bus').innerHTML = `<div class="row"><span class="badge">fleetbus</span> orders=${(bs.orders || []).length} · deps=${(bs.deps || []).length} · peers=${bs.peers || 0}</div>`;
+  $('evolve').innerHTML = `<div class="row"><b>evolve</b> policies=${(ev.policies || []).length} · genome=${(ev.genome || []).length} · boost=${(ev.boost || []).length}</div>`;
+
+  $('runtime').innerHTML = `<div class="row"><b>runtime</b> threads=${rt.activeThreads || 0}/${rt.maxThreads || '-'} · depth≤${rt.maxDepth || '-'} · jobs=${rt.activeJobs || 0} · refinery=${state.refineryPending || 0}</div>` +
+    (state.convoys || []).slice(-4).map((c) => `<div class="row"><span class="badge">${esc(c.status)}</span>convoy ${(c.progress != null ? (c.progress * 100).toFixed(0) + '%' : '')} · ${(c.beads || []).length} beads</div>`).join('');
+  $('hooks').innerHTML = Object.entries(state.hookStats || {}).map(([k, v]) => `<div class="row"><b>${esc(k)}</b><span style="color:var(--dim)">×${v.count} · ${v.totalMs}ms · 败${v.failed}</span></div>`).join('') || '<div class="row" style="color:var(--dim)">（尚无 hook 事件）</div>';
+
+  renderApprovals(state);
+  drawDAG(state);
+
+  tokenSamples.push(totalTok); if (tokenSamples.length > 90) tokenSamples.shift();
+  drawSpark();
+
+  const f = (state.fleets || [])[0];
+  if (f) {
+    const evs = await fetch(`/v1/events?fleet=${f.id}&limit=40`).then((x) => x.json());
+    if (!$('events').children.length && Array.isArray(evs)) evs.slice().reverse().forEach((e) => pushEvent(e, false));
+    // 真黑板记录（POST /v1/admin op=board）
+    const bb = await fetch('/v1/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'board', fleet: f.id, k: 24 }) }).then((x) => x.json()).catch(() => null);
+    const records = bb && bb.data && (bb.data.records || bb.data.stats) ? (bb.data.records || []) : (Array.isArray(bb && bb.data) ? bb.data : []);
+    if (records.length) $('board').innerHTML = records.slice(-24).map((r) =>
+      `<div class="record"><span class="t">${esc(r.type)}</span>·<b>${esc(r.author)}</b>·c${r.confidence} ${esc(truncate(r.head || r.body || '', 150))}${r.artifact ? ` <span class="seq">→${esc(r.artifact)}</span>` : ''}</div>`).join('');
+    else $('board').innerHTML = '<div class="row" style="color:var(--dim)">（黑板暂无记录）</div>';
   }
 }
+function drawSpark() {
+  const cv = $('spark'), ctx = cv.getContext('2d');
+  const W = cv.clientWidth; cv.width = W * devicePixelRatio; cv.height = 56 * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  ctx.clearRect(0, 0, W, 56);
+  if (tokenSamples.length < 2) return;
+  const max = Math.max(...tokenSamples, 1), min = Math.min(...tokenSamples);
+  ctx.beginPath();
+  tokenSamples.forEach((t, i) => {
+    const x = i / (tokenSamples.length - 1) * (W - 8) + 4;
+    const y = 50 - (t - min) / Math.max(max - min, 1) * 44;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.lineTo(W - 4, 54); ctx.lineTo(4, 54); ctx.closePath();
+  const g = ctx.createLinearGradient(0, 0, 0, 56); g.addColorStop(0, '#38bdf833'); g.addColorStop(1, '#38bdf800');
+  ctx.fillStyle = g; ctx.fill();
+}
+wsConnect();
 tick(); setInterval(tick, 1500);
 </script>

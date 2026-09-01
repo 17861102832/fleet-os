@@ -42,6 +42,65 @@ const jsonOut = (value: unknown) => [{ type: 'text' as const, text: typeof value
 
 export function apply(ctx: Context) {
   ctx.tools.register(defineTool({
+    name: 'fleet_dashboard',
+    description: '在对话中渲染舰队旗舰看板（Markdown）：KPI/DAG 分层/审批/balancer/黑板，并附浏览器看板 URL。指挥官最常用的单一视图。',
+    parameters: { fleet: { type: 'string', required: false, description: 'fleetId，缺省取第一个活跃舰队' } },
+    output: { schema: { type: 'string' }, render: (_a, v) => [{ type: 'text' as const, text: String(v) }] },
+    async execute(args) {
+      const s: any = await state()
+      const nd: any[] = s.nodeDetail || []
+      const fleets: any[] = s.fleets || []
+      const f = args.fleet ? fleets.find((x) => x.id === args.fleet) : fleets[0]
+      const nodes = args.fleet ? nd.filter((n) => n.fleet === args.fleet) : nd
+      const by: Record<string, number> = {}
+      nodes.forEach((n) => { by[n.status] = (by[n.status] || 0) + 1 })
+      const done = by.done || 0, total = nodes.length
+      const tok = (s.workers || []).reduce((x: number, w: any) => x + (w.tokens || 0), 0)
+      const L: string[] = []
+      L.push('# ⚓ Fleet Deck · 舰队看板')
+      L.push('')
+      L.push(`**舰队** ${f ? f.id : '（无）'} · 拓扑 ${f ? f.topology : '-'} · 状态 ${f ? f.status : '-'} · 进度 **${done}/${total}**`)
+      L.push(`**舰员** ${(s.workers || []).filter((w: any) => w.online).length}/${(s.workers || []).length} 在线 · **tokens** ${tok.toLocaleString()} · **threads** ${s.runtime?.activeThreads ?? 0}/${s.runtime?.maxThreads ?? '-'}`)
+      L.push('')
+      L.push('| 状态 | 数量 |')
+      L.push('|---|---|')
+      for (const k of ['done', 'running', 'leased', 'ready', 'awaiting_approval', 'failed', 'pending']) if (by[k]) L.push(`| ${k} | ${by[k]} |`)
+      L.push('')
+      // DAG 分层（deps 深度）
+      const byId = Object.fromEntries(nodes.map((n: any) => [n.id, n]))
+      const depth: Record<string, number> = {}
+      const depthOf = (id: string, seen: Set<string>): number => {
+        if (depth[id] != null) return depth[id]
+        if (seen.has(id)) return 0
+        seen.add(id)
+        const n = byId[id]
+        const d = (!n || !n.deps?.length) ? 0 : 1 + Math.max(...n.deps.filter((d: string) => byId[d]).map((d: string) => depthOf(d, seen)))
+        depth[id] = d; return d
+      }
+      nodes.forEach((n: any) => depthOf(n.id, new Set()))
+      const icon: Record<string, string> = { done: '✅', running: '🔄', leased: '🔄', ready: '🔵', pending: '⚪', awaiting_approval: '⚠️', failed: '❌', void: '🚫' }
+      const layers = [...new Set(nodes.map((n: any) => depth[n.id]))].sort((a, b) => a - b)
+      L.push('**作战 DAG（按依赖分层）**')
+      for (const d of layers) {
+        L.push(`- **L${d}** ` + nodes.filter((n: any) => depth[n.id] === d).map((n: any) => `${icon[n.status] || '⚪'}\`${n.id}\`${n.attempt ? '(r' + n.attempt + ')' : ''}`).join(' · '))
+      }
+      const pend = nodes.filter((n: any) => n.status === 'awaiting_approval')
+      if (pend.length) {
+        L.push('')
+        L.push('**⚠ 待人工审批**（用 fleet_approve / fleet_reject 处理）')
+        pend.forEach((n: any) => L.push(`- \`${n.id}\` ${n.persona} — ${n.mission || ''}`))
+      }
+      const bal = s.balancerSnap || {}
+      const prov = Object.entries(bal.providers || {}).map(([k, v]: [string, any]) => `${v.ok ? '🟢' : '🔴'}${k}(err×${v.errs})`).join(' ')
+      L.push('')
+      L.push(`**Balancer** ${bal.mode || '-'} → ${prov || '-'} ｜ **FleetBus** orders=${s.busSnap?.orders?.length ?? 0} deps=${s.busSnap?.deps?.length ?? 0} peers=${s.busSnap?.peers ?? 0} ｜ **Evolve** policies=${s.evolveArtifacts?.policies?.length ?? 0} genome=${s.evolveArtifacts?.genome?.length ?? 0}`)
+      L.push('')
+      L.push(`🖥️ 浏览器旗舰看板（DAG 图 + 实时事件流 + 看板审批）：\`${(process.env.FLEET_HUB || 'http://127.0.0.1:7788')}/board\``)
+      return L.join('\n')
+    },
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'fleet_plan',
     description: '编排一支舰队（多 agent 并行 + 盲评对抗 + 预算闸）。spec: {goal, acceptance[], topology?, fanout?, lanes?[], items?[], budget{maxTokens,maxWallMs}, worktree?, permissionMode?, deps?[]}',
     parameters: {

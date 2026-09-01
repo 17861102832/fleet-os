@@ -504,7 +504,7 @@ class Hub {
       hookStats: this.hooks.stats(),
       workers: [...this.workers.values()].map((w) => ({ id: w.id, name: w.name, kind: w.kind, model: w.model, provider: w.provider, persona: w.persona, online: w.online, slots: w.slots, busy: [...w.busy], done: w.done, failed: w.failed, tokens: w.tokens })),
       fleets: [...this.fleets.values()].map((f) => f.stats()),
-      nodeDetail: [...this.fleets.values()].flatMap((f) => [...f.nodes.values()].map((n) => ({ fleet: f.id, id: n.id, kind: n.kind, persona: n.persona, status: n.status, tier: n.tier, attempt: n.attempts, verdict: n.verifyVerdict || null }))),
+      nodeDetail: [...this.fleets.values()].flatMap((f) => [...f.nodes.values()].map((n) => ({ fleet: f.id, id: n.id, kind: n.kind, persona: n.persona, status: n.status, tier: n.tier, attempt: n.attempts, verdict: n.verifyVerdict || null, deps: n.deps || [], mission: String(n.mission || '').slice(0, 80), tokens: n.tokens || 0, dynamic: !!n.dynamic }))),
       personas: this.personaList(),
       roles: this.rolesList(),
       skills: this.skillsCatalog(),
