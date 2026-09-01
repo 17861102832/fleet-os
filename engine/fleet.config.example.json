@@ -1,0 +1,23 @@
+{
+  "host": "127.0.0.1",
+  "port": 7788,
+  "tickMs": 300,
+  "boardTokens": 900,
+  "personaDir": "personas",
+  "stateDir": "state",
+  "artifactDir": "artifacts",
+  "logDir": "state/log",
+  "limits": {
+    "maxConcurrent": 16,
+    "perWorkerSlots": 4
+  },
+  "providers": {
+    "eco":  { "baseUrl": "${ECO_BASE}",  "apiKey": "${ECO_KEY}",  "model": "${ECO_MODEL}",  "maxTokens": 2048, "pricePer1M": 0.0002, "concurrency": { "ratePerSec": 4, "burst": 6 } },
+    "mid":  { "baseUrl": "${MID_BASE}",  "apiKey": "${MID_KEY}",  "model": "${MID_MODEL}",  "maxTokens": 4096, "pricePer1M": 0.002,  "concurrency": { "ratePerSec": 2, "burst": 4 } },
+    "high": { "baseUrl": "${HIGH_BASE}", "apiKey": "${HIGH_KEY}", "model": "${HIGH_MODEL}", "maxTokens": 6144, "pricePer1M": 0.01,   "concurrency": { "ratePerSec": 1, "burst": 2 } },
+    "ide":  { "kind": "ide", "concurrency": { "ratePerSec": 1, "burst": 1 } },
+    "claude_code": { "kind": "cli", "command": { "win": "claude --headless --prompt {prompt_file}", "posix": "claude --headless --prompt {prompt_file}" }, "timeoutMs": 600000, "concurrency": { "ratePerSec": 0.5, "burst": 1 } },
+    "codex": { "kind": "cli", "command": { "win": "codex exec --quiet -", "posix": "codex exec --quiet -" }, "timeoutMs": 600000, "concurrency": { "ratePerSec": 0.5, "burst": 1 } },
+    "trae_cli": { "kind": "cli", "command": { "win": "trae-cli run --file {prompt_file}", "posix": "trae-cli run --file {prompt_file}" }, "timeoutMs": 600000, "concurrency": { "ratePerSec": 0.5, "burst": 1 } }
+  }
+}

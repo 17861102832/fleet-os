@@ -1,0 +1,86 @@
+<!doctype html><meta charset="utf-8" />
+<title>舰队 · 看板</title>
+<style>
+  body { font-family: ui-monospace, Consolas, "PingFang SC", monospace; background: #0c0d10; color: #e5e7eb; margin: 0; padding: 0; }
+  header { padding: 12px 18px; border-bottom: 1px solid #1f2937; display: flex; gap: 14px; align-items: center; }
+  header h1 { font-size: 14px; margin: 0; letter-spacing: 1px; color: #fde68a; }
+  header .pill { font-size: 11px; padding: 2px 8px; border: 1px solid #374; border-radius: 999px; color: #93c5fd; }
+  main { padding: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { background: #111317; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; }
+  .card h2 { margin: 0 0 8px; font-size: 12px; color: #fbbf24; letter-spacing: .8px; text-transform: uppercase; }
+  .row { font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #1f2937; display: flex; gap: 8px; }
+  .row:last-child { border-bottom: 0; }
+  .badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #1f2937; color: #93c5fd; }
+  .s-active { background: #052e1a; color: #34d399; }
+  .s-pending { background: #2b1a05; color: #fbbf24; }
+  .s-ready { background: #04263a; color: #38bdf8; }
+  .s-leased, .s-running { background: #2a0e3f; color: #c084fc; }
+  .s-done { background: #053024; color: #10b981; }
+  .s-failed { background: #3a0d11; color: #f87171; }
+  .bar { height: 4px; background: #1f2937; border-radius: 2px; overflow: hidden; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, #38bdf8, #10b981); }
+  .record { font-size: 12px; padding: 6px 0; border-bottom: 1px dashed #1f2937; }
+  .record .type { color: #a78bfa; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 4px 0 0; color: #d1d5db; }
+</style>
+<header>
+  <h1>FLEET · 看板 v3</h1>
+  <span class="pill" id="uptime">--</span>
+  <span class="pill" id="fleets">--</span>
+  <span class="pill" id="workers">--</span>
+  <span class="pill" id="leases">--</span>
+  <span class="pill" id="threads">--</span>
+  <span class="pill" id="pending">--</span>
+</header>
+<main>
+  <section class="card"><h2>Fleets</h2><div id="fleets"></div></section>
+  <section class="card"><h2>Workers</h2><div id="workers-list"></div></section>
+  <section class="card"><h2>Runtime & Gas Town</h2><div id="runtime"></div></section>
+  <section class="card"><h2>Balancer & FleetBus</h2><div id="balancer"></div></section>
+  <section class="card"><h2>Evolve 产物</h2><div id="evolve"></div></section>
+  <section class="card"><h2>Hooks 统计</h2><div id="hooks"></div></section>
+  <section class="card" style="grid-column: span 2"><h2>Nodes</h2><div id="nodes"></div></section>
+  <section class="card" style="grid-column: span 2"><h2>Board (live)</h2><div id="board"></div></section>
+</main>
+<script>
+const fmt = (s) => s < 60 ? s.toFixed(0) + 's' : (s/60).toFixed(1) + 'm';
+async function tick() {
+  const r = await fetch('/v1/state').then(r => r.json());
+  document.getElementById('uptime').textContent = 'uptime ' + fmt(r.uptimeMs/1000);
+  document.getElementById('fleets').textContent = r.fleets.length + ' fleets';
+  document.getElementById('workers').textContent = r.workers.filter(w => w.online).length + '/' + r.workers.length + ' online';
+  document.getElementById('leases').textContent = r.activeLeases + ' leases';
+  const rt = r.runtime || {};
+  document.getElementById('threads').textContent = 'threads ' + (rt.activeThreads||0) + '/' + (rt.maxThreads||'-') + ' · depth≤' + (rt.maxDepth||'-');
+  const pend = (r.nodeDetail||[]).filter(n => n.status === 'awaiting_approval');
+  document.getElementById('pending').textContent = pend.length ? ('⚠ 待审批 ' + pend.length) : '无审批积压';
+  document.getElementById('pending').style.color = pend.length ? '#fbbf24' : '#34d399';
+  document.getElementById('fleets').innerHTML = r.fleets.map(f => `<div class="row"><span class="badge s-${f.status||'pending'}">${f.status}</span><b>${f.id}</b><span style="color:#9ca3af">${f.topology} · ${f.nodes} · ${(f.board && f.board.total)||0} records</span></div>`).join('');
+  document.getElementById('workers-list').innerHTML = r.workers.map(w => `<div class="row"><span class="badge">${w.kind}</span><b>${w.name}</b><span style="color:#9ca3af">${w.model||''} busy=${w.busy.length} done=${w.done} tokens=${w.tokens}</span></div>`).join('');
+  const beads = r.beads || []; const convoys = r.convoys || [];
+  document.getElementById('runtime').innerHTML =
+    `<div class="row"><b>max_threads</b> ${rt.maxThreads||'-'} · <b>job 超时</b> ${((rt.jobMaxRuntimeMs||0)/60000)|0}min · <b>activeJobs</b> ${rt.activeJobs||0}</div>` +
+    (r.refineryPending ? `<div class="row"><span class="badge s-pending">refinery</span> 合并队列 ${r.refineryPending}</div>` : '') +
+    convoys.slice(-8).map(c => `<div class="row"><span class="badge">${c.status}</span><b>convoy</b> ${c.name ? c.name.slice(0,40) : c.id} · ${(c.beads||[]).length} beads · ${c.progress!=null?(c.progress*100)+'%':''}</div>`).join('');
+  document.getElementById('hooks').innerHTML = Object.entries(r.hookStats||{}).map(([k,v]) => `<div class="row"><b>${k}</b><span style="color:#9ca3af">×${v.count} · ${v.totalMs}ms · 失败 ${v.failed}</span></div>`).join('') || '<div class="row">（尚无 hook 事件）</div>';
+  // v5: Balancer / FleetBus / Evolve
+  const bal = r.balancerSnap || {};
+  const bprov = bal.providers || {};
+  document.getElementById('balancer').innerHTML =
+    `<div class="row"><b>模式</b> ${bal.mode||'-'} · <b>rr</b> ${bal.rr||0}</div>` +
+    Object.entries(bprov).map(([k,v]) => `<div class="row"><span class="badge ${v.ok?'':'s-failed'}">${v.ok?'健康':'降级'}</span><b>${k}</b> · 错误×${v.errs}${v.lastErr?' · '+v.lastErr.slice(0,30):''}</div>`).join('') +
+    `<div class="row"><span class="badge">fleetbus</span> orders=${(r.busSnap&&r.busSnap.orders||[]).length} · deps=${(r.busSnap&&r.busSnap.deps||[]).length} · peers=${(r.busSnap&&r.busSnap.peers)||0}</div>`;
+  const ev = r.evolveArtifacts || {};
+  document.getElementById('evolve').innerHTML =
+    `<div class="row"><b>policies</b> ${(ev.policies||[]).length} · <b>genome</b> ${(ev.genome||[]).length} · <b>boost</b> ${(ev.boost||[]).length}</div>` +
+    (ev.boost||[]).slice(-6).map((f) => `<div class="row">${f}</div>`).join('');
+  const pend2 = (r.nodeDetail||[]).filter(n => n.status === 'awaiting_approval');
+  if (pend2.length) document.getElementById('pending').textContent = '⚠ 待审批 ' + pend2.length;
+  document.getElementById('nodes').innerHTML = r.nodeDetail.map(n => `<div class="row"><span class="badge s-${n.status||'pending'}">${n.status}</span><b>${n.id}</b><span style="color:#9ca3af">${n.kind}/${n.persona}/${n.tier}</span>${n.verdict ? `<span class="badge">verdict=${n.verdict}</span>`:''}</div>`).join('');
+  if (r.fleets[0]) {
+    const r2 = await fetch(`/v1/events?fleet=${r.fleets[0].id}&limit=80`).then(x=>x.json());
+    document.getElementById('board').innerHTML = r2.slice().reverse().map(e => `<div class="record"><span class="type">${e.type}</span> · ${e.actor || ''} · seq ${e.seq} <pre>${JSON.stringify(e.data||{}, null, 0).slice(0,400)}</pre></div>`).join('');
+  }
+}
+tick(); setInterval(tick, 1500);
+</script>

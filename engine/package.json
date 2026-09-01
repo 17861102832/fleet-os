@@ -1,0 +1,19 @@
+{
+  "name": "fleet-os",
+  "version": "1.0.0",
+  "private": true,
+  "description": "舰队模式 · Fleet OS — 事件溯源 + WebSocket 黑板 + DAG 调度 + 独立人格的并行执行中枢（零依赖）",
+  "type": "commonjs",
+  "bin": {
+    "fleet": "src/fleet.js"
+  },
+  "scripts": {
+    "hub": "node src/hub.js",
+    "mcp": "node src/mcp-server.js",
+    "worker": "node src/worker.js",
+    "smoke": "node src/fleet.js smoke"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

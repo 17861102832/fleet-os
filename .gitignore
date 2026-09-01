@@ -1,0 +1,7 @@
+node_modules/
+state/
+artifacts/
+*.log
+fleet.config.json
+.DS_Store
+Thumbs.db
