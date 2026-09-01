@@ -469,6 +469,22 @@ class Hub {
     };
     if (u.pathname === '/health') return send(200, { ok: true, uptimeMs: ts() - this.startedAt, fleets: this.fleets.size, workers: this.workers.size });
     if (u.pathname === '/v1/state') return send(200, this.snapshotState());
+    // v6.5: HTTP admin 通道 —— 供 dsh-fleet 插件 / 脚本用纯 HTTP 驱动舰队（与 WS admin 同一 op 协议）
+    if (u.pathname === '/v1/admin' && req.method === 'POST') {
+      let raw = '';
+      req.on('data', (c) => { raw += c; if (raw.length > 2e6) req.destroy(); });
+      req.on('end', async () => {
+        try {
+          const m = JSON.parse(raw || '{}');
+          let result = null;
+          const fakeConn = { send: (x) => { if (x && x.t === 'admin_result') result = x; } };
+          this.admin(fakeConn, m);
+          if (result && result.data && typeof result.data.then === 'function') result = { ...result, data: await result.data };
+          send(result && result.ok ? 200 : 400, result);
+        } catch (e) { send(400, { error: String(e.message || e) }); }
+      });
+      return;
+    }
     if (u.pathname === '/v1/events') {
       const f = u.searchParams.get('fleet');
       return send(200, f ? this.replay(f, { limit: +(u.searchParams.get('limit') || 500) }) : { error: 'fleet required' });

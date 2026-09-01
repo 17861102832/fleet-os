@@ -78,6 +78,55 @@ node src/fleet.js status fleet.config.json
 
 40 个工具覆盖：plan / status / adopt / board / rerank / fork / subagents / handoff / deps / consume / bus_snap / perm_check / balancer / compile_stats / evolve / team_join / peer_ping …
 
+## DeepSeek Harness 深度集成（dsh-fleet）
+
+Fleet OS 同时是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的插件（`dsh-plugin` topic）。
+
+### DSH 架构一页纸
+
+```
+Agent = Model + Harness
+                  │
+        ┌─────────┴──────────┐
+        │   Cordis 内核       │  ← 来自 Koishi.js 生态的依赖注入/插件生命周期框架
+        │  （挂载/卸载/依赖） │     只管插件，不提供任何能力
+        └─────────┬──────────┘
+   一切皆插件：models · tools · skills · sessions · sandboxes
+              storage · loops · scheduling · UI
+```
+
+- **插件三形式**：函数 `export function apply(ctx)` / 对象 / class `Service`；`export const inject = ['tools']` 声明依赖，Cordis 等服务就绪才加载
+- **工具 DSL**：`ctx.tools.register(defineTool({ name, description, parameters, output{schema,render}, execute }))` —— args 自动校验，`output.render` 决定模型看到的形态
+- **四种运行时模式**：Standard（全家桶）/ Code（模型写 TS 编排多轮工具）/ Minimal（双工具基准）/ Creator（运行时检查 + 在线试插件）
+- **全链路可追溯**：append-only session log（system prompt/推理/工具调用/子代理调度/每次上下文注入全记录），Trajectory 视图按来源检查，resume/fork/search/replay 全走同一事件流
+- **能力分层**：Service Definition / Service Provider / Consumer 三包拆分，任何能力可换
+- **挂载方式**：cordis.yml overlay `pnpm dsh web --patch ./cordis.yml`，路径必须绝对；`ctx.effect()` 提供卸载清理
+
+### Fleet OS ↔ DSH 架构映射
+
+| DSH 原生 | Fleet OS 对应 | 增量 |
+|---|---|---|
+| append-only session log | append-only ledger + checkpoints | 多一层 replay/fork time-travel |
+| subagents | 舰队节点（扇出 3~5 + max_threads/depth 护栏） | 盲评对抗 + verifier rerank + tier 级联 |
+| Trajectory view | /board 实时看板 | 舰队级 DAG 视图 + balancer 健康 + 待审批告警 |
+| 模型插件 | Balancer 多厂商负载均衡 | round-robin/cheapest/least_error + 自动降级 |
+| Context 注入 | Compactor 热/冷分层 | observation masking，防 context rot |
+
+### 三步挂载
+
+```bash
+# 1. 起舰队 hub
+node engine/src/hub.js engine/fleet.config.json
+
+# 2. 把 dsh/cordis.yml 里的路径改成你的绝对路径
+#    （插件源：dsh/src/fleet-bridge.ts —— 注册 8 个 fleet_* 工具）
+
+# 3. DSH 加载 overlay
+pnpm dsh web --patch /absolute/path/to/fleet-os/dsh/cordis.yml
+```
+
+Harness 里的 agent 即获得：`fleet_plan`（编排一支舰队）/ `fleet_status` / `fleet_state`（全量快照）/ `fleet_board`（读黑板）/ `fleet_approvals` + `fleet_approve`（人工审批闭环）/ `fleet_handoff`（跨舰队接力）/ `fleet_evolve`（技能基因提炼）。
+
 ## 测试
 
 ```bash

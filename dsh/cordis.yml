@@ -1,0 +1,8 @@
+# dsh-fleet 挂载 overlay —— 让 DeepSeek Harness 加载舰队桥
+# 用法：在 deepseek-harness 仓库根执行
+#   pnpm dsh web --patch /absolute/path/to/fleet-os/dsh/cordis.yml
+# 前置：舰队 hub 已启动
+#   node /absolute/path/to/fleet-os/engine/src/hub.js /absolute/path/to/fleet-os/engine/fleet.config.json
+- insert:
+  - id: dsh-fleet
+    name: '/absolute/path/to/fleet-os/dsh/src/fleet-bridge.ts'
