@@ -1,5 +1,12 @@
 # Fleet OS · 舰队模式
 
+[![CI](https://github.com/17861102832/fleet-os/actions/workflows/ci.yml/badge.svg)](https://github.com/17861102832/fleet-os/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/17861102832/fleet-os/actions/workflows/codeql.yml/badge.svg)](https://github.com/17861102832/fleet-os/actions/workflows/codeql.yml)
+![Node](https://img.shields.io/badge/Node-%3E%3D20-green)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Modules](https://img.shields.io/badge/modules-36-informational)
+![MCP](https://img.shields.io/badge/MCP-40_tools-purple)
+
 > 生产级多 Agent 协同引擎 —— WebSocket 黑板 + 事件溯源 + 盲评对抗 + 跨舰队接力 + 自进化。零 npm 依赖，36 模块，单进程可跑。
 
 **这不是又一个"并行 N 个子代理"的玩具。** 每一个槽位、每道闸、每条账、每段上下文都可审计、可恢复、可 fork、可接力、会自进化、会负载均衡。
@@ -133,6 +140,14 @@ Harness 里的 agent 即获得：`fleet_plan`（编排一支舰队）/ `fleet_st
 node src/e2e.js     # 48 项端到端：审批闭环/冷续传/api真执行器/cli外设/worktree隔离/MCP/子代理/自进化/跨舰队/权限/团队/压缩/负载均衡
 ```
 
+**这 48 项由 CI 每次 push 自动跑**（左上角 CI 徽章即实时状态），任何一项红都会挡住合并。
+第 4 路「cli 外设」用 `engine/test/fake-agent.js` —— 一个零依赖的假外部 agent，
+扮演 claude / codex / dsh 这类 headless 竞品，验证「竞品即组件」：外部 CLI 的 stdout 回流即交付。
+
 ## 许可证
 
 MIT
+
+---
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
